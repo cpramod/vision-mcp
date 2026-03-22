@@ -3,6 +3,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
 import OpenAI from "openai";
+import { readFileSync, existsSync, readdirSync } from "fs";
+import { dirname, basename } from "path";
 const API_KEY = process.env.OPENAI_API_KEY || process.env.API_KEY || "";
 const BASE_URL = process.env.OPENAI_BASE_URL || process.env.API_BASE_URL;
 const MODEL = process.env.VISION_MODEL || process.env.MODEL || "gpt-4o";
@@ -118,11 +120,90 @@ function isUrl(str) {
         return false;
     }
 }
-function prepareImageContent(image) {
+function isLocalFile(str) {
+    if (existsSync(str))
+        return true;
+    // Try fuzzy matching for files with non-standard spaces
+    const dir = dirname(str);
+    const targetName = basename(str);
+    // Normalize various Unicode spaces to regular space
+    const normalizedTarget = targetName.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ');
+    try {
+        const files = readdirSync(dir);
+        for (const file of files) {
+            const normalizedFile = file.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ');
+            if (normalizedFile === normalizedTarget) {
+                return true;
+            }
+        }
+    }
+    catch {
+        // Directory doesn't exist or can't be read
+    }
+    return false;
+}
+function resolveLocalFilePath(str) {
+    if (existsSync(str))
+        return str;
+    // Try fuzzy matching for files with non-standard spaces
+    const dir = dirname(str);
+    const targetName = basename(str);
+    const normalizedTarget = targetName.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ');
+    try {
+        const files = readdirSync(dir);
+        for (const file of files) {
+            const normalizedFile = file.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ');
+            if (normalizedFile === normalizedTarget) {
+                return `${dir}/${file}`;
+            }
+        }
+    }
+    catch {
+        // Directory doesn't exist or can't be read
+    }
+    return str;
+}
+function getMimeTypeFromPath(path) {
+    const ext = path.toLowerCase().split('.').pop();
+    switch (ext) {
+        case 'png': return 'image/png';
+        case 'gif': return 'image/gif';
+        case 'webp': return 'image/webp';
+        case 'jpg':
+        case 'jpeg': return 'image/jpeg';
+        default: return 'image/jpeg';
+    }
+}
+function readLocalFileAsBase64(path) {
+    const resolvedPath = resolveLocalFilePath(path);
+    const buffer = readFileSync(resolvedPath);
+    const base64 = buffer.toString("base64");
+    const mimeType = getMimeTypeFromPath(resolvedPath);
+    return { base64, mimeType };
+}
+async function fetchImageAsBase64(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    return { base64, mimeType: contentType };
+}
+async function prepareImageContent(image) {
     if (isUrl(image)) {
+        const { base64, mimeType } = await fetchImageAsBase64(image);
         return {
             type: "image_url",
-            image_url: { url: image },
+            image_url: { url: `data:${mimeType};base64,${base64}` },
+        };
+    }
+    if (isLocalFile(image)) {
+        const { base64, mimeType } = readLocalFileAsBase64(image);
+        return {
+            type: "image_url",
+            image_url: { url: `data:${mimeType};base64,${base64}` },
         };
     }
     // Handle base64 data
@@ -171,7 +252,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         isError: true,
                     };
                 }
-                const imageContent = prepareImageContent(image);
+                const imageContent = await prepareImageContent(image);
                 if (detail && ["low", "high", "auto"].includes(detail) && imageContent.type === "image_url") {
                     imageContent.image_url.detail = detail;
                 }
@@ -199,7 +280,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         isError: true,
                     };
                 }
-                const imageContents = images.slice(0, 4).map(prepareImageContent);
+                const imageContents = await Promise.all(images.slice(0, 4).map(prepareImageContent));
                 const content = [
                     {
                         type: "text",
@@ -224,7 +305,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         isError: true,
                     };
                 }
-                const imageContent = prepareImageContent(image);
+                const imageContent = await prepareImageContent(image);
                 const promptText = preserve_formatting
                     ? "Extract all text from this image. Preserve the original formatting, layout, and structure as much as possible. Use newlines and spacing to maintain the visual organization. If there's no text, say 'No text detected in this image.'"
                     : "Extract all text from this image as plain text. If there's no text, say 'No text detected in this image.'";
@@ -249,7 +330,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         isError: true,
                     };
                 }
-                const imageContent = prepareImageContent(image);
+                const imageContent = await prepareImageContent(image);
                 const promptText = focus
                     ? `Provide a detailed description of this scene, focusing specifically on ${focus}. Include spatial relationships, atmosphere, context, and relevant details.`
                     : "Provide a comprehensive description of this scene. Include: 1) Overall setting and location, 2) Spatial relationships between elements, 3) Atmosphere and mood, 4) Lighting and time of day if apparent, 5) Any activities or actions taking place, 6) Environmental context.";
