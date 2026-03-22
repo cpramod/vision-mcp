@@ -173,10 +173,25 @@ function prepareImageContent(image: string): ChatCompletionContentPart {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
+  if (!args) {
+    return {
+      content: [{ type: "text", text: "Error: No arguments provided" }],
+      isError: true,
+    };
+  }
+
   try {
     switch (name) {
       case "analyze_image": {
-        const { image, prompt, detail } = args as { image: string; prompt?: string; detail?: string };
+        const { image, prompt, detail } = args as { image?: string; prompt?: string; detail?: string };
+        
+        if (!image) {
+          return {
+            content: [{ type: "text", text: "Error: 'image' parameter is required" }],
+            isError: true,
+          };
+        }
+        
         const imageContent = prepareImageContent(image);
         if (detail && ["low", "high", "auto"].includes(detail) && imageContent.type === "image_url") {
           imageContent.image_url.detail = detail as "low" | "high" | "auto";
@@ -202,8 +217,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "compare_images": {
-        const { images, prompt } = args as { images: string[]; prompt?: string };
-        const imageContents = images.map(prepareImageContent);
+        const { images, prompt } = args as { images?: string[]; prompt?: string };
+        
+        if (!images || !Array.isArray(images) || images.length < 2) {
+          return {
+            content: [{ type: "text", text: "Error: 'images' must be an array with at least 2 images" }],
+            isError: true,
+          };
+        }
+        
+        const imageContents = images.slice(0, 4).map(prepareImageContent);
 
         const content: ChatCompletionContentPart[] = [
           {
@@ -225,7 +248,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "extract_text": {
-        const { image, preserve_formatting = true } = args as { image: string; preserve_formatting?: boolean };
+        const { image, preserve_formatting = true } = args as { image?: string; preserve_formatting?: boolean };
+        
+        if (!image) {
+          return {
+            content: [{ type: "text", text: "Error: 'image' parameter is required" }],
+            isError: true,
+          };
+        }
+        
         const imageContent = prepareImageContent(image);
 
         const promptText = preserve_formatting
@@ -249,7 +280,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "describe_scene": {
-        const { image, focus } = args as { image: string; focus?: string };
+        const { image, focus } = args as { image?: string; focus?: string };
+        
+        if (!image) {
+          return {
+            content: [{ type: "text", text: "Error: 'image' parameter is required" }],
+            isError: true,
+          };
+        }
+        
         const imageContent = prepareImageContent(image);
 
         const promptText = focus
