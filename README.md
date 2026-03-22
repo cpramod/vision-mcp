@@ -22,7 +22,9 @@ Add to Claude Desktop config:
       "command": "npx",
       "args": ["github:cpramod/vision-mcp"],
       "env": {
-        "OPENAI_API_KEY": "your-api-key"
+        "OPENAI_API_KEY": "your-api-key",
+        "OPENAI_BASE_URL": "https://api.openai.com/v1",
+        "VISION_MODEL": "gpt-4o"
       }
     }
   }
@@ -32,7 +34,7 @@ Add to Claude Desktop config:
 ### Option 2: Install globally from GitHub
 
 ```bash
-npm install -g github:YOUR_USERNAME/imageify
+npm install -g github:cpramod/vision-mcp
 ```
 
 Then use in Claude Desktop config:
@@ -42,7 +44,9 @@ Then use in Claude Desktop config:
     "vision": {
       "command": "vision-mcp",
       "env": {
-        "OPENAI_API_KEY": "your-api-key"
+        "OPENAI_API_KEY": "your-api-key",
+        "OPENAI_BASE_URL": "https://api.openai.com/v1",
+        "VISION_MODEL": "gpt-4o"
       }
     }
   }
@@ -53,7 +57,7 @@ Then use in Claude Desktop config:
 
 ```bash
 git clone https://github.com/cpramod/vision-mcp.git
-cd imageify
+cd vision-mcp
 npm install
 npm run build
 ```
@@ -64,9 +68,11 @@ Then use the local path in Claude Desktop config:
   "mcpServers": {
     "vision": {
       "command": "node",
-      "args": ["/path/to/imageify/dist/index.js"],
+      "args": ["/path/to/vision-mcp/dist/index.js"],
       "env": {
-        "OPENAI_API_KEY": "your-api-key"
+        "OPENAI_API_KEY": "your-api-key",
+        "OPENAI_BASE_URL": "https://api.openai.com/v1",
+        "VISION_MODEL": "gpt-4o"
       }
     }
   }
@@ -80,7 +86,7 @@ Then use the local path in Claude Desktop config:
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `OPENAI_API_KEY` or `API_KEY` | API key for the vision provider | For most providers |
-| `OPENAI_BASE_URL` or `API_BASE_URL` | Custom API endpoint URL | For third-party providers |
+| `OPENAI_BASE_URL` or `API_BASE_URL` | Custom API endpoint URL | No (defaults to OpenAI) |
 | `VISION_MODEL` or `MODEL` | Model name to use | No (defaults to `gpt-4o`) |
 
 ## Usage with Claude Desktop
@@ -95,16 +101,15 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "command": "npx",
       "args": ["github:cpramod/vision-mcp"],
       "env": {
-        "OPENAI_API_KEY": "your-openai-api-key"
+        "OPENAI_API_KEY": "your-openai-api-key",
+        "VISION_MODEL": "gpt-4o"
       }
     }
   }
 }
 ```
 
-**Third-Party Providers (OpenAI-compatible APIs):**
-
-*Anthropic Claude via OpenRouter:*
+**Anthropic Claude via OpenRouter:**
 ```json
 {
   "mcpServers": {
@@ -121,7 +126,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-*Google Gemini via OpenRouter:*
+**Google Gemini via OpenRouter:**
 ```json
 {
   "mcpServers": {
@@ -138,7 +143,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-*Ollama (local):*
+**Ollama (local):**
 ```json
 {
   "mcpServers": {
@@ -154,7 +159,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-*Groq:*
+**Groq:**
 ```json
 {
   "mcpServers": {
@@ -171,7 +176,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-*LM Studio (local):*
+**LM Studio (local):**
 ```json
 {
   "mcpServers": {
@@ -261,7 +266,9 @@ After publishing to npm, users can install with:
       "command": "npx",
       "args": ["vision-mcp"],
       "env": {
-        "OPENAI_API_KEY": "your-api-key"
+        "OPENAI_API_KEY": "your-api-key",
+        "OPENAI_BASE_URL": "https://api.openai.com/v1",
+        "VISION_MODEL": "gpt-4o"
       }
     }
   }
